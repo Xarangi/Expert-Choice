@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "expert-choice"
+version = "0.1.0"
+description = "Replication-gated broadcast topology for multi-agent expert selection"
+requires-python = ">=3.10"
+dependencies = [
+    "openai>=1.40.0",
+    "anthropic>=0.34.0",
+    "pydantic>=2.0",
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[project.scripts]
+expert-choice = "expert_choice.experiments.run_psychology:main"
+
+[tool.setuptools.packages.find]
+include = ["expert_choice*"]
+exclude = ["tests*", "third_party*", "configs*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

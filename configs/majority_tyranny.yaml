@@ -1,0 +1,20 @@
+method: majority_tyranny
+task: moon_survival
+n_agents: 4
+seed: 0
+expert_info_mode: single_expert
+decision_mode: expert_not_mentioned
+claim_schema: per_item_rank
+thesis_selector: rationale_span
+topology_policy: majority_size
+synthesis: assemble_then_hubs
+cross_examine: skip
+stages:
+  - isolated_drafts
+  - grouping
+  - reconstruct
+  - synthesize
+backend:
+  provider: openai
+  model: gpt-4o-mini
+output_dir: outputs

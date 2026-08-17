@@ -1,0 +1,14 @@
+method: majority_drafts
+task: moon_survival
+n_agents: 4
+seed: 0
+expert_info_mode: single_expert
+decision_mode: expert_not_mentioned
+stages:
+  - isolated_drafts
+  - majority_aggregate
+backend:
+  provider: openai
+  model: gpt-4o-mini
+  temperature: 0.0
+output_dir: outputs

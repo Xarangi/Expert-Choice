@@ -1,0 +1,24 @@
+method: replication_broadcast
+task: moon_survival
+n_agents: 4
+seed: 0
+expert_info_mode: single_expert
+decision_mode: expert_not_mentioned
+claim_schema: per_item_rank
+thesis_selector: rationale_span
+topology_policy: max_replication
+replication_k: 0.5
+synthesis: assemble_then_hubs
+cross_examine: full_complement
+stages:
+  - isolated_drafts
+  - grouping
+  - cross_examine
+  - reconstruct
+  - synthesize
+backend:
+  provider: openai
+  model: gpt-4o-mini
+  temperature: 0.0
+  max_workers: 8
+output_dir: outputs

@@ -1,0 +1,21 @@
+method: global_winner
+task: moon_survival
+n_agents: 4
+seed: 0
+expert_info_mode: single_expert
+decision_mode: expert_not_mentioned
+claim_schema: global_ranking
+thesis_selector: rationale_span
+topology_policy: global_winner
+synthesis: assemble_then_hubs
+cross_examine: full_complement
+stages:
+  - isolated_drafts
+  - grouping
+  - cross_examine
+  - reconstruct
+  - synthesize
+backend:
+  provider: openai
+  model: gpt-4o-mini
+output_dir: outputs
