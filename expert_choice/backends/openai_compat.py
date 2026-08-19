@@ -62,51 +62,81 @@ class OpenAIBackend(BaseChatBackend):
 
 
 class AzureOpenAIBackend(BaseChatBackend):
-    """Azure AI Foundry / Azure OpenAI backend.
+    """Azure OpenAI / Microsoft Foundry backend.
 
-    `model` is the deployment name. Per-agent `agent_models` map to other deployments.
+    `model` is the Azure deployment name.
     """
 
     def __init__(
         self,
-        model: str,
+        model: Optional[str] = None,
         agent_models: Optional[dict[str, str]] = None,
         api_key: Optional[str] = None,
         endpoint: Optional[str] = None,
-        api_version: Optional[str] = None,
-        temperature: float = 0.0,
+        temperature: Optional[float] = None,
         max_workers: int = 8,
     ) -> None:
-        from openai import AzureOpenAI
+        from openai import OpenAI
 
-        self.client = AzureOpenAI(
+        endpoint = endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
+        if not endpoint:
+            raise ValueError("AZURE_OPENAI_ENDPOINT is required")
+
+        # Accept either:
+        #   https://foo.openai.azure.com
+        # or
+        #   https://foo.openai.azure.com/openai/v1/
+        base_url = endpoint.rstrip("/")
+        if not base_url.endswith("/openai/v1"):
+            base_url += "/openai/v1/"
+        else:
+            base_url += "/"
+
+        self.client = OpenAI(
             api_key=api_key or os.getenv("AZURE_OPENAI_API_KEY"),
-            azure_endpoint=endpoint or os.getenv("AZURE_OPENAI_ENDPOINT"),
-            api_version=api_version
-            or os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview"),
+            base_url=base_url,
         )
+
         self.model = model or os.getenv("AZURE_OPENAI_DEPLOYMENT", "")
         self.agent_models = agent_models or {}
         self.temperature = temperature
         self.max_workers = max_workers
 
-    def complete(self, messages: list[Message], *, agent_id: str) -> Completion:
+    def complete(
+        self,
+        messages: list[Message],
+        *,
+        agent_id: str,
+    ) -> Completion:
         deployment = self.agent_models.get(agent_id, self.model)
+
         if not deployment:
             raise ValueError(
                 "Azure backend requires a deployment name via config model "
                 "or AZURE_OPENAI_DEPLOYMENT"
             )
-        response = self.client.chat.completions.create(
-            model=deployment,
-            messages=_messages_payload(messages),
-            temperature=self.temperature,
-        )
+
+        kwargs = {
+            "model": deployment,
+            "messages": _messages_payload(messages),
+        }
+
+        # Important: some reasoning models don't accept temperature.
+        if self.temperature is not None:
+            kwargs["temperature"] = self.temperature
+
+        response = self.client.chat.completions.create(**kwargs)
+
         choice = response.choices[0]
         usage = response.usage
+
         return Completion(
             text=choice.message.content or "",
-            input_tokens=int(getattr(usage, "prompt_tokens", 0) or 0),
-            output_tokens=int(getattr(usage, "completion_tokens", 0) or 0),
+            input_tokens=int(
+                getattr(usage, "prompt_tokens", 0) or 0
+            ),
+            output_tokens=int(
+                getattr(usage, "completion_tokens", 0) or 0
+            ),
             logprob=_mean_logprob(choice),
         )
