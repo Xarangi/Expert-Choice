@@ -4,7 +4,7 @@
 
 - Python 3.10+
 - Git (the paper tasks are a submodule)
-- An OpenAI key, **or** Azure AI Foundry / Azure OpenAI credentials
+- Azure AI Foundry credentials (default), **or** an OpenAI key
 
 ## Install
 
@@ -42,23 +42,25 @@ git submodule update --init --recursive
 
 ## API keys
 
-Edit `.env` (never commit it).
-
-OpenAI:
-
-```bash
-OPENAI_API_KEY=sk-...
-```
+Edit `.env` (never commit it). Example configs default to Azure + `DeepSeek-V4-Flash`.
 
 Azure AI Foundry / Azure OpenAI (GA **OpenAI v1** route — do **not** set a dated `api-version`):
 
 ```bash
 AZURE_OPENAI_API_KEY=...
 AZURE_OPENAI_ENDPOINT=https://<resource>.openai.azure.com
-AZURE_OPENAI_DEPLOYMENT=<your-deployment-name>
+AZURE_OPENAI_DEPLOYMENT=DeepSeek-V4-Flash
 ```
 
 The pipeline uses the standard `OpenAI` client with base URL `{endpoint}/openai/v1/` and the Azure `api-key` header. `backend.model` (or `--model`) is the **deployment name**, not a catalog id. A `*.services.ai.azure.com` resource host is rewritten to `*.openai.azure.com` automatically.
+
+Official OpenAI instead:
+
+```bash
+OPENAI_API_KEY=sk-...
+```
+
+Then set `backend.provider: openai` and `backend.model` to an OpenAI model id.
 
 ## First run
 
@@ -68,11 +70,7 @@ Paper default slice: NASA Moon Survival, 4 agents, concentrated expert info, exp
 python -m expert_choice.experiments.run_psychology --config configs/replication_broadcast.yaml
 ```
 
-Azure:
-
-```bash
-python -m expert_choice.experiments.run_psychology --config configs/replication_broadcast.yaml --backend azure --model your-deployment
-```
+That uses Azure + `DeepSeek-V4-Flash`. Official OpenAI: `--backend openai --model gpt-4o-mini`.
 
 Other paper tasks:
 

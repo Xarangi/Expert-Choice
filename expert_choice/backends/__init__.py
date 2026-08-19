@@ -4,7 +4,7 @@ from typing import Optional
 
 from expert_choice.backends.base import BaseChatBackend
 from expert_choice.backends.mock import MockBackend
-from expert_choice.backends.openai_compat import AzureOpenAIBackend, OpenAIBackend
+from expert_choice.backends.openai_compat import OpenAIBackend
 
 
 def create_backend(
@@ -12,7 +12,7 @@ def create_backend(
     provider: str,
     model: str,
     agent_models: Optional[dict[str, str]] = None,
-    temperature: float = 0.0,
+    temperature: Optional[float] = None,
     max_workers: int = 8,
     mock: Optional[MockBackend] = None,
 ) -> BaseChatBackend:
@@ -29,10 +29,11 @@ def create_backend(
             max_workers=max_workers,
         )
     if name in {"azure", "azure_openai", "foundry"}:
-        return AzureOpenAIBackend(
+        return OpenAIBackend(
             model=model,
             agent_models=agent_models,
             temperature=temperature,
             max_workers=max_workers,
+            azure=True,
         )
     raise ValueError(f"Unknown backend provider: {provider}")

@@ -8,7 +8,6 @@ stages:
   - isolated_drafts
   - isolated_best_select
 backend:
-  provider: openai
-  model: gpt-4o-mini
-  temperature: 0.0
+  provider: azure
+  model: DeepSeek-V4-Flash
 output_dir: outputs

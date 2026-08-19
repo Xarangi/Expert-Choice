@@ -15,6 +15,6 @@ stages:
   - reconstruct
   - synthesize
 backend:
-  provider: openai
-  model: gpt-4o-mini
+  provider: azure
+  model: DeepSeek-V4-Flash
 output_dir: outputs

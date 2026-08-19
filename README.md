@@ -29,7 +29,7 @@ copy .env.example .env
 python -m expert_choice.experiments.run_psychology --config configs/replication_broadcast.yaml
 ```
 
-Azure Foundry: `--backend azure --model <deployment-name>`.
+Defaults to Azure Foundry + `DeepSeek-V4-Flash`. Official OpenAI: `--backend openai --model gpt-4o-mini`.
 
 ```bash
 pytest

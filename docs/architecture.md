@@ -15,7 +15,7 @@ Expert-Choice/
   docs/                            this documentation
   expert_choice/
     adapters/                      RankingTaskAdapter + TeamworkRankingAdapter
-    backends/                      OpenAI, Azure, Mock
+    backends/                      OpenAI SDK (official + Azure Foundry), Mock
     claims/                        sub-claim schemas + thesis selectors
     core/types.py                  PipelineState and related models
     core/protocols.py              structural typing (Stage, ChatBackend, …)

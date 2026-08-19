@@ -32,10 +32,10 @@ stages:
   - reconstruct
   - synthesize
 backend:
-  provider: openai          # openai | azure | azure_openai | foundry | mock
-  model: gpt-4o-mini        # Azure: deployment name
-  temperature: 0.0
-  max_workers: 8
+  provider: azure           # azure | azure_openai | foundry | openai | mock
+  model: DeepSeek-V4-Flash  # Azure deployment name (or OpenAI model id)
+  # temperature: 0.7        # omit unless you need to override the model default
+  max_workers: 8            # parallel LLM calls in complete_many
   agent_models: {}          # optional {"0": "deploy-a", "1": "deploy-b"}
 output_dir: outputs
 ```
@@ -58,8 +58,10 @@ Copy an existing file in `configs/` rather than inventing a schema. Unknown keys
 | `cross_examine` | `full_complement`, `top2_coalitions`, `skip` | Stage 3 budget |
 | `synthesis` | `assemble_then_hubs`, `assemble_only` | Stage 5 fallback |
 | `stages` | list of registered stage names | Ablation surface |
-| `backend.provider` | `openai`, `azure`, `mock` | LLM client |
-| `backend.model` | string | Model id or Azure deployment |
+| `backend.provider` | `azure`, `openai`, `mock` | LLM client (`azure` / `foundry` use the OpenAI SDK) |
+| `backend.model` | string | Azure deployment name (default `DeepSeek-V4-Flash`) or OpenAI model id |
+| `backend.temperature` | float or omit | Only sent if set. Omit to use the model's default (many reasoning models reject `0`) |
+| `backend.max_workers` | int, default 8 | Cap on parallel `complete_many` threads (isolated drafts, replication tests) |
 | `backend.agent_models` | map agent id → model | Heterogeneous teams |
 | `output_dir` | path | Traces and summaries |
 | `system_prompt` | optional string | Overrides default isolated-draft system prompt |
@@ -93,7 +95,7 @@ python -m expert_choice.experiments.run_psychology ^
   --expert-info-mode distributed ^
   --seed 3 ^
   --backend azure ^
-  --model gpt-4o-mini-deploy
+  --model DeepSeek-V4-Flash
 ```
 
 ## Bundled configs
@@ -137,9 +139,9 @@ task: student_body_president     # 4 items instead of 15
 ```yaml
 backend:
   provider: azure
-  model: default-deployment
+  model: DeepSeek-V4-Flash
   agent_models:
-    "0": expert-deploy
+    "0": DeepSeek-V4-Flash
     "1": cheap-deploy
     "2": cheap-deploy
     "3": cheap-deploy

@@ -26,40 +26,18 @@ def _mean_logprob(choice: object) -> Optional[float]:
     return float(sum(values) / len(values))
 
 
-class OpenAIBackend(BaseChatBackend):
-    """Official OpenAI Chat Completions backend."""
-
-    def __init__(
-        self,
-        model: str,
-        agent_models: Optional[dict[str, str]] = None,
-        api_key: Optional[str] = None,
-        temperature: float = 0.0,
-        max_workers: int = 8,
-    ) -> None:
-        from openai import OpenAI
-
-        self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
-        self.model = model
-        self.agent_models = agent_models or {}
-        self.temperature = temperature
-        self.max_workers = max_workers
-
-    def complete(self, messages: list[Message], *, agent_id: str) -> Completion:
-        model = self.agent_models.get(agent_id, self.model)
-        response = self.client.chat.completions.create(
-            model=model,
-            messages=_messages_payload(messages),
-            temperature=self.temperature,
-        )
-        choice = response.choices[0]
-        usage = response.usage
-        return Completion(
-            text=choice.message.content or "",
-            input_tokens=int(getattr(usage, "prompt_tokens", 0) or 0),
-            output_tokens=int(getattr(usage, "completion_tokens", 0) or 0),
-            logprob=_mean_logprob(choice),
-        )
+def _chat_create_kwargs(
+    model: str,
+    messages: list[Message],
+    temperature: Optional[float],
+) -> dict:
+    kwargs: dict = {
+        "model": model,
+        "messages": _messages_payload(messages),
+    }
+    if temperature is not None:
+        kwargs["temperature"] = temperature
+    return kwargs
 
 
 def azure_v1_base_url(endpoint: str) -> str:
@@ -83,26 +61,32 @@ def azure_v1_base_url(endpoint: str) -> str:
     return urlunparse((parsed.scheme or "https", host, path + "/", "", "", ""))
 
 
-def _openai_client_with_azure_api_key(api_key: str, base_url: str):
-    """OpenAI() client against Azure, authenticating with the `api-key` header."""
-    import httpx
+def _openai_client(api_key: Optional[str], *, azure_endpoint: Optional[str] = None):
+    """Official ``OpenAI()`` client, optionally pointed at Azure Foundry."""
     from openai import OpenAI
+
+    if not azure_endpoint:
+        return OpenAI(api_key=api_key)
+
+    import httpx
 
     def _use_api_key_header(request: httpx.Request) -> None:
         request.headers["api-key"] = api_key
         request.headers.pop("Authorization", None)
 
-    http_client = httpx.Client(event_hooks={"request": [_use_api_key_header]})
-    return OpenAI(api_key=api_key, base_url=base_url, http_client=http_client)
+    return OpenAI(
+        api_key=api_key,
+        base_url=azure_v1_base_url(azure_endpoint),
+        http_client=httpx.Client(event_hooks={"request": [_use_api_key_header]}),
+    )
 
 
-class AzureOpenAIBackend(BaseChatBackend):
-    """Microsoft Foundry / Azure OpenAI backend (GA OpenAI v1 API).
+class OpenAIBackend(BaseChatBackend):
+    """Chat Completions via the official OpenAI Python SDK.
 
-    Uses the standard ``OpenAI`` client with
-    ``https://<resource>.openai.azure.com/openai/v1/`` and the Azure ``api-key``
-    header. No dated ``api-version`` query parameter. ``model`` is the deployment
-    name.
+    Official OpenAI, or Azure AI Foundry / Azure OpenAI with ``azure=True``:
+    same client, ``.../openai/v1/`` base URL, Azure ``api-key`` header.
+    ``model`` is the OpenAI model id or the Azure deployment name.
     """
 
     def __init__(
@@ -113,57 +97,43 @@ class AzureOpenAIBackend(BaseChatBackend):
         endpoint: Optional[str] = None,
         temperature: Optional[float] = None,
         max_workers: int = 8,
+        *,
+        azure: bool = False,
     ) -> None:
-        endpoint = endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
-        if not endpoint:
-            raise ValueError("AZURE_OPENAI_ENDPOINT is required")
-        key = api_key or os.getenv("AZURE_OPENAI_API_KEY")
-        if not key:
-            raise ValueError("AZURE_OPENAI_API_KEY is required")
+        if azure:
+            endpoint = endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
+            if not endpoint:
+                raise ValueError("AZURE_OPENAI_ENDPOINT is required")
+            key = api_key or os.getenv("AZURE_OPENAI_API_KEY")
+            if not key:
+                raise ValueError("AZURE_OPENAI_API_KEY is required")
+            self.client = _openai_client(key, azure_endpoint=endpoint)
+            self.model = model or os.getenv("AZURE_OPENAI_DEPLOYMENT", "")
+            if not self.model:
+                raise ValueError(
+                    "Azure requires a deployment name via config model "
+                    "or AZURE_OPENAI_DEPLOYMENT"
+                )
+        else:
+            self.client = _openai_client(api_key or os.getenv("OPENAI_API_KEY"))
+            if not model:
+                raise ValueError("OpenAI backend requires a model name")
+            self.model = model
 
-        base_url = azure_v1_base_url(endpoint)
-        self.client = _openai_client_with_azure_api_key(key, base_url)
-
-        self.model = model or os.getenv("AZURE_OPENAI_DEPLOYMENT", "")
         self.agent_models = agent_models or {}
         self.temperature = temperature
         self.max_workers = max_workers
 
-    def complete(
-        self,
-        messages: list[Message],
-        *,
-        agent_id: str,
-    ) -> Completion:
-        deployment = self.agent_models.get(agent_id, self.model)
-
-        if not deployment:
-            raise ValueError(
-                "Azure backend requires a deployment name via config model "
-                "or AZURE_OPENAI_DEPLOYMENT"
-            )
-
-        kwargs = {
-            "model": deployment,
-            "messages": _messages_payload(messages),
-        }
-
-        # Important: some reasoning models don't accept temperature.
-        if self.temperature is not None:
-            kwargs["temperature"] = self.temperature
-
-        response = self.client.chat.completions.create(**kwargs)
-
+    def complete(self, messages: list[Message], *, agent_id: str) -> Completion:
+        model = self.agent_models.get(agent_id, self.model)
+        response = self.client.chat.completions.create(
+            **_chat_create_kwargs(model, messages, self.temperature)
+        )
         choice = response.choices[0]
         usage = response.usage
-
         return Completion(
             text=choice.message.content or "",
-            input_tokens=int(
-                getattr(usage, "prompt_tokens", 0) or 0
-            ),
-            output_tokens=int(
-                getattr(usage, "completion_tokens", 0) or 0
-            ),
+            input_tokens=int(getattr(usage, "prompt_tokens", 0) or 0),
+            output_tokens=int(getattr(usage, "completion_tokens", 0) or 0),
             logprob=_mean_logprob(choice),
         )

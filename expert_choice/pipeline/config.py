@@ -8,10 +8,10 @@ from pydantic import BaseModel, Field
 
 
 class BackendConfig(BaseModel):
-    provider: str = "openai"
-    model: str = "gpt-4o-mini"
+    provider: str = "azure"
+    model: str = "DeepSeek-V4-Flash"
     agent_models: dict[str, str] = Field(default_factory=dict)
-    temperature: float = 0.0
+    temperature: Optional[float] = None
     max_workers: int = 8
 
 

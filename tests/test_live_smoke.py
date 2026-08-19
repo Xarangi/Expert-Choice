@@ -19,7 +19,7 @@ def _has_live_backend() -> bool:
 @pytest.mark.skipif(not _has_live_backend(), reason="Set EXPERT_CHOICE_LIVE=1 with OpenAI/Azure credentials")
 def test_live_smoke_two_agents_nasa():
     provider = "azure" if os.getenv("AZURE_OPENAI_API_KEY") else "openai"
-    model = os.getenv("AZURE_OPENAI_DEPLOYMENT") or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    model = os.getenv("AZURE_OPENAI_DEPLOYMENT") or os.getenv("OPENAI_MODEL", "DeepSeek-V4-Flash")
     config = PipelineConfig(
         method="replication_broadcast",
         task="moon_survival",

@@ -17,8 +17,7 @@ stages:
   - reconstruct
   - synthesize
 backend:
-  provider: openai
-  model: gpt-4o-mini
-  temperature: 0.0
+  provider: azure
+  model: DeepSeek-V4-Flash
   max_workers: 8
 output_dir: outputs

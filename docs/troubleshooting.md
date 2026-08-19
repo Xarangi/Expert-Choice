@@ -17,7 +17,7 @@ The adapter adds `third_party/teamwork` to `sys.path`. Importing a paper task al
 - Default resource endpoint: `https://<resource>.openai.azure.com`. A `*.services.ai.azure.com` resource host is rewritten to `*.openai.azure.com`.
 - Foundry **project** URLs (`.../api/projects/<project>`) are left on `services.ai.azure.com` and still get `/openai/v1/` appended.
 
-`provider` accepts `azure`, `azure_openai`, and `foundry` (same client).
+`provider` values `azure`, `azure_openai`, and `foundry` all use `OpenAIBackend` with `azure=True` (same OpenAI SDK client).
 
 ## OpenAI 401
 
