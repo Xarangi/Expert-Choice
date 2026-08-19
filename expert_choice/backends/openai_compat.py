@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from typing import Optional
+from urllib.parse import urlparse, urlunparse
 
 from expert_choice.backends.base import BaseChatBackend
 from expert_choice.core.types import Completion, Message
@@ -61,10 +62,47 @@ class OpenAIBackend(BaseChatBackend):
         )
 
 
-class AzureOpenAIBackend(BaseChatBackend):
-    """Azure OpenAI / Microsoft Foundry backend.
+def azure_v1_base_url(endpoint: str) -> str:
+    """Build the OpenAI-SDK base URL for Foundry / Azure OpenAI.
 
-    `model` is the Azure deployment name.
+    Default shape: ``https://<resource>.openai.azure.com/openai/v1/``.
+    Resource hosts on ``*.services.ai.azure.com`` are rewritten to
+    ``*.openai.azure.com`` unless the URL is a Foundry project path.
+    """
+    raw = endpoint.strip()
+    if "://" not in raw:
+        raw = f"https://{raw}"
+    parsed = urlparse(raw)
+    host = parsed.netloc
+    path = parsed.path.rstrip("/")
+    if host.endswith(".services.ai.azure.com") and "/api/projects/" not in path:
+        resource = host[: -len(".services.ai.azure.com")]
+        host = f"{resource}.openai.azure.com"
+    if not path.endswith("/openai/v1"):
+        path = f"{path}/openai/v1" if path else "/openai/v1"
+    return urlunparse((parsed.scheme or "https", host, path + "/", "", "", ""))
+
+
+def _openai_client_with_azure_api_key(api_key: str, base_url: str):
+    """OpenAI() client against Azure, authenticating with the `api-key` header."""
+    import httpx
+    from openai import OpenAI
+
+    def _use_api_key_header(request: httpx.Request) -> None:
+        request.headers["api-key"] = api_key
+        request.headers.pop("Authorization", None)
+
+    http_client = httpx.Client(event_hooks={"request": [_use_api_key_header]})
+    return OpenAI(api_key=api_key, base_url=base_url, http_client=http_client)
+
+
+class AzureOpenAIBackend(BaseChatBackend):
+    """Microsoft Foundry / Azure OpenAI backend (GA OpenAI v1 API).
+
+    Uses the standard ``OpenAI`` client with
+    ``https://<resource>.openai.azure.com/openai/v1/`` and the Azure ``api-key``
+    header. No dated ``api-version`` query parameter. ``model`` is the deployment
+    name.
     """
 
     def __init__(
@@ -76,26 +114,15 @@ class AzureOpenAIBackend(BaseChatBackend):
         temperature: Optional[float] = None,
         max_workers: int = 8,
     ) -> None:
-        from openai import OpenAI
-
         endpoint = endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
         if not endpoint:
             raise ValueError("AZURE_OPENAI_ENDPOINT is required")
+        key = api_key or os.getenv("AZURE_OPENAI_API_KEY")
+        if not key:
+            raise ValueError("AZURE_OPENAI_API_KEY is required")
 
-        # Accept either:
-        #   https://foo.openai.azure.com
-        # or
-        #   https://foo.openai.azure.com/openai/v1/
-        base_url = endpoint.rstrip("/")
-        if not base_url.endswith("/openai/v1"):
-            base_url += "/openai/v1/"
-        else:
-            base_url += "/"
-
-        self.client = OpenAI(
-            api_key=api_key or os.getenv("AZURE_OPENAI_API_KEY"),
-            base_url=base_url,
-        )
+        base_url = azure_v1_base_url(endpoint)
+        self.client = _openai_client_with_azure_api_key(key, base_url)
 
         self.model = model or os.getenv("AZURE_OPENAI_DEPLOYMENT", "")
         self.agent_models = agent_models or {}

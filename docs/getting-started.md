@@ -50,16 +50,15 @@ OpenAI:
 OPENAI_API_KEY=sk-...
 ```
 
-Azure AI Foundry / Azure OpenAI:
+Azure AI Foundry / Azure OpenAI (GA **OpenAI v1** route — do **not** set a dated `api-version`):
 
 ```bash
 AZURE_OPENAI_API_KEY=...
-AZURE_OPENAI_ENDPOINT=https://<resource>.openai.azure.com/
-AZURE_OPENAI_API_VERSION=2024-08-01-preview
+AZURE_OPENAI_ENDPOINT=https://<resource>.openai.azure.com
 AZURE_OPENAI_DEPLOYMENT=<your-deployment-name>
 ```
 
-On Azure, `backend.model` in YAML (or `--model` on the CLI) is the **deployment name**, not a public model id.
+The pipeline uses the standard `OpenAI` client with base URL `{endpoint}/openai/v1/` and the Azure `api-key` header. `backend.model` (or `--model`) is the **deployment name**, not a catalog id. A `*.services.ai.azure.com` resource host is rewritten to `*.openai.azure.com` automatically.
 
 ## First run
 

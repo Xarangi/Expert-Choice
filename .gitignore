@@ -5,6 +5,8 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .env
+test_foundry.py
+test2.py
 outputs/
 traces/
 *.egg-info/

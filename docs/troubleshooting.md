@@ -12,9 +12,10 @@ The adapter adds `third_party/teamwork` to `sys.path`. Importing a paper task al
 
 ## Azure 401 / deployment not found
 
-- `backend.model` (or `--model`) must be the **deployment name**, not `gpt-4o-mini` unless that is actually the deployment
-- `AZURE_OPENAI_ENDPOINT` should look like `https://<resource>.openai.azure.com/`
-- `AZURE_OPENAI_API_VERSION` must be one your resource accepts (default in `.env.example`: `2024-08-01-preview`)
+- Do **not** pass `AZURE_OPENAI_API_VERSION`. The client is `OpenAI(base_url="https://<resource>.openai.azure.com/openai/v1/")` with the Azure `api-key` header ([API version lifecycle](https://learn.microsoft.com/en-us/azure/foundry/openai/api-version-lifecycle)).
+- `backend.model` (or `--model`) must be the **deployment name** in the Foundry portal.
+- Default resource endpoint: `https://<resource>.openai.azure.com`. A `*.services.ai.azure.com` resource host is rewritten to `*.openai.azure.com`.
+- Foundry **project** URLs (`.../api/projects/<project>`) are left on `services.ai.azure.com` and still get `/openai/v1/` appended.
 
 `provider` accepts `azure`, `azure_openai`, and `foundry` (same client).
 
